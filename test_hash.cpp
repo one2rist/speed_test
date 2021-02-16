@@ -1,9 +1,11 @@
+#include <stdio.h>
 #include <ctime>
-#include <iostream>
-#include <random>
-#include <set>
 #include <string>
+#include <iostream>
 #include <unordered_map>
+#include <set>
+#include <unistd.h>
+#include <random>
 
 constexpr size_t KEY_SIZE=5;
 constexpr size_t MAP_SIZE=100000;
@@ -13,39 +15,51 @@ namespace cmmn {
 
 using namespace std;
 
-template<typename IntType, size_t Max, size_t Min>
-IntType randomInt() {
-    static uniform_int_distribution<IntType> dist(Min, Max);
-    static mt19937 gen{random_device()()};
-    return dist(gen);
+template<typename IntType>
+class RandomInt {
+    public:
+        RandomInt(IntType fromIncl, IntType toIncl)
+            : gen(rd())
+            , dist(fromIncl, toIncl)
+        {
+        }
+        IntType operator()() {return dist(gen);}
+    private:
+        random_device rd;
+        mt19937 gen;
+        uniform_int_distribution<IntType> dist;
+};
+
 }
 
-
-string gen_random_string(const int len) {
-    string tmp_s;
+std::string gen_random_string(const int len) {
+    std::string tmp_s;
     tmp_s.reserve(len);
     static const char alphanum[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         "abcdefghijklmnopqrstuvwxyz";
-    for (int i = 0; i < len; ++i)
-        tmp_s += alphanum[cmmn::randomInt<size_t, 0, KEY_SIZE>() % (sizeof(alphanum) - 1)];
+    static cmmn::RandomInt<size_t> gen(0,sizeof(alphanum));
+    for (int i = 0; i < len; ++i) {
+        tmp_s += alphanum[gen() % (sizeof(alphanum) - 1)];
+    }
     return tmp_s;
 }
 
-}
 
 int main()
 {
     // set of keys to find in hash table
     std::set<std::string> test_keys;
     for (size_t i=0; i<MAP_SIZE; ++i) {
-        test_keys.emplace(cmmn::gen_random_string(KEY_SIZE));
+        test_keys.emplace(gen_random_string(KEY_SIZE));
     }
 
     // create hash table
     std::unordered_map<std::string, int> hash;
     for (int i=0; i<MAP_SIZE; ++i) {
-        hash[cmmn::gen_random_string(KEY_SIZE)] = 0;
+        auto s = gen_random_string(KEY_SIZE);
+        //std::cout << s << std::endl;
+        hash[s] = 0;
     }
 
     std::cout << "Test set size: " << test_keys.size() << "(" << MAP_SIZE << ")" << std::endl;
